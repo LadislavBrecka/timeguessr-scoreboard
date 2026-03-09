@@ -2,10 +2,11 @@
 
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { authOptions, isAdminSession } from "@/lib/auth";
 import { loadStore, saveStore, generateId } from "@/lib/store";
+import { isMongoConfigured } from "@/lib/db";
 import { extractScoreFromImage } from "@/lib/extract-score-from-screenshot";
 import type { Round, ScoreEntry, GuessDetail } from "@/lib/store";
 
@@ -18,13 +19,13 @@ export type SubScoreEntry = {
   guessDetails?: GuessDetail[];
 };
 
+/** One game in an event: total game score + optional per-guess details. entryId needed for preview images when using MongoDB. */
+export type GameEntry = SubScoreEntry & { entryId?: string };
+
 export type RoundWithSubScores = Round & {
   entries: ScoreEntry[];
   playerTotals: { playerName: string; totalScore: number; subScores: number[]; subScoreEntries?: SubScoreEntry[] }[];
 };
-
-/** One game in an event: total game score + optional per-guess details. */
-export type GameEntry = SubScoreEntry;
 
 /** Player's participation in one event: the event + their games (scores) in it. */
 export type PlayerEvent = {
@@ -86,16 +87,16 @@ export async function getRoundWithSubScores(
       score: e.score,
       guessDetails,
     };
-    if (!existing) {
+    if (existing) {
+      existing.totalScore += e.score;
+      existing.subScores.push(e.score);
+      existing.subScoreEntries.push(subEntry);
+    } else {
       byPlayer.set(e.playerName, {
         totalScore: e.score,
         subScores: [e.score],
         subScoreEntries: [subEntry],
       });
-    } else {
-      existing.totalScore += e.score;
-      existing.subScores.push(e.score);
-      existing.subScoreEntries.push(subEntry);
     }
   }
   const playerTotals = Array.from(byPlayer.entries())
@@ -135,7 +136,7 @@ export async function getScoreboardByPlayer(): Promise<PlayerScoreboardEntry[]> 
         ? e.guessDetails
         : undefined;
     const games = player.byRound.get(e.roundId) ?? [];
-    games.push({ score: e.score, guessDetails });
+    games.push({ score: e.score, guessDetails, entryId: e.id });
     player.byRound.set(e.roundId, games);
   }
 
@@ -244,32 +245,46 @@ export async function addScoreFromScreenshot(
     return { error: "Round not found." };
   }
   const entryId = generateId();
-  const previewsDir = path.join(process.cwd(), "data", "previews");
+  const useMongo = isMongoConfigured();
   let guessDetails: GuessDetail[] | undefined;
   if (result.guessDetails?.length) {
-    const hasPreviews = result.guessDetails.some(
-      (g) => g.imageData && g.imageData.startsWith("data:image")
-    );
-    if (hasPreviews) {
-      await mkdir(previewsDir, { recursive: true });
-      await Promise.all(
-        result.guessDetails.map(async (g, i) => {
-          if (!g.imageData || !g.imageData.startsWith("data:image")) return;
-          const base64 = g.imageData.replace(/^data:image\/\w+;base64,/, "");
-          await writeFile(
-            path.join(previewsDir, `${entryId}-${i}.jpg`),
-            Buffer.from(base64, "base64")
-          );
-        })
+    if (useMongo) {
+      guessDetails = result.guessDetails.map((g, i) => {
+        const out: GuessDetail = {
+          points: g.points,
+          ...(g.yearsOff !== undefined && { yearsOff: g.yearsOff }),
+          ...(g.distanceOff && { distanceOff: g.distanceOff }),
+          imagePath: String(i),
+          ...(g.imageData?.startsWith("data:image") && { imageData: g.imageData }),
+        };
+        return out;
+      });
+    } else {
+      const previewsDir = path.join(process.cwd(), "data", "previews");
+      const hasPreviews = result.guessDetails.some(
+        (g) => g.imageData?.startsWith("data:image")
       );
+      if (hasPreviews) {
+        await mkdir(previewsDir, { recursive: true });
+        await Promise.all(
+          result.guessDetails.map(async (g, i) => {
+            if (!g.imageData?.startsWith("data:image")) return;
+            const base64 = g.imageData.replace(/^data:image\/\w+;base64,/, "");
+            await writeFile(
+              path.join(previewsDir, `${entryId}-${i}.jpg`),
+              Buffer.from(base64, "base64")
+            );
+          })
+        );
+      }
+      guessDetails = result.guessDetails.map((g, i) => {
+        const { imageData, ...rest } = g;
+        const out: GuessDetail = { ...rest };
+        if (imageData?.startsWith("data:image"))
+          out.imagePath = `${entryId}-${i}.jpg`;
+        return out;
+      });
     }
-    guessDetails = result.guessDetails.map((g, i) => {
-      const { imageData, ...rest } = g;
-      const out: GuessDetail = { ...rest };
-      if (imageData && imageData.startsWith("data:image"))
-        out.imagePath = `${entryId}-${i}.jpg`;
-      return out;
-    });
   }
   const entry: ScoreEntry = {
     id: entryId,

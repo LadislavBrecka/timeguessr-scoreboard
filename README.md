@@ -2,6 +2,29 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Run with file storage (default)
+
+No database required. Data is stored in `data/store.json`.
+
+### Run with MongoDB locally
+
+1. Start MongoDB in Docker:
+   ```bash
+   npm run mongo:up
+   ```
+2. In `.env`, set:
+   ```
+   MONGODB_URI=mongodb://localhost:27017
+   ```
+3. Start the app:
+   ```bash
+   npm run dev
+   ```
+
+Collections `rounds` and `scores` are created on first use. To stop MongoDB: `npm run mongo:down`.
+
+---
+
 First, run the development server:
 
 ```bash

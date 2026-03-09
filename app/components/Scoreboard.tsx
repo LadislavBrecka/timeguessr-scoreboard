@@ -9,7 +9,6 @@ import {
   deleteRound,
   type RoundWithTotals,
   type PlayerScoreboardEntry,
-  type GameEntry,
 } from "@/app/actions";
 import type { GuessDetail } from "@/lib/store";
 
@@ -19,7 +18,7 @@ type Props = {
   isAdmin: boolean;
 };
 
-export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Props) {
+export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<Props>) {
   const [rounds, setRounds] = useState<RoundWithTotals[]>(initialRounds);
   const [players, setPlayers] = useState<PlayerScoreboardEntry[]>(initialPlayers);
   const [expandedPlayerName, setExpandedPlayerName] = useState<string | null>(null);
@@ -72,9 +71,9 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Props) {
         return;
       }
       setAddSuccess(
-        result.extractedScore != null
-          ? `Score ${result.extractedScore.toLocaleString("en-GB")} added from screenshot.`
-          : "Score added from screenshot."
+        result.extractedScore == null
+          ? "Score added from screenshot."
+          : `Score ${result.extractedScore.toLocaleString("en-GB")} added from screenshot.`
       );
       setAddModalOpen(false);
       await refreshData();
@@ -101,7 +100,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Props) {
         ?? Array.from(e.clipboardData?.items ?? []).find(
             (item) => item.type.startsWith("image/")
           )?.getAsFile();
-      if (!file || !file.type.startsWith("image/")) return;
+      if (!file?.type.startsWith("image/")) return;
       e.preventDefault();
       const roundId = screenshotRoundRef.current?.value;
       const playerName = screenshotNameRef.current?.value?.trim();
@@ -501,14 +500,14 @@ function PlayerRow({
   expandedGameKey,
   onToggleDetails,
   onToggleGame,
-}: {
+}: Readonly<{
   rank: number;
   player: PlayerScoreboardEntry;
   isExpanded: boolean;
   expandedGameKey: string | null;
   onToggleDetails: () => void;
   onToggleGame: (key: string) => void;
-}) {
+}>) {
   return (
     <li className="bg-white dark:bg-stone-900">
       <div className="flex items-center gap-3 border-b border-stone-100 px-4 py-3 dark:border-stone-800">
@@ -603,7 +602,11 @@ function PlayerRow({
                                   <li key={gi} className="flex items-start gap-2">
                                     {g.imagePath && (
                                       <img
-                                        src={`/api/preview/${g.imagePath}`}
+                                        src={
+                                          game.entryId
+                                            ? `/api/preview/${game.entryId}/${g.imagePath}`
+                                            : `/api/preview/${g.imagePath}`
+                                        }
                                         alt={`Guess ${gi + 1}`}
                                         className="h-12 w-12 shrink-0 rounded object-cover"
                                       />

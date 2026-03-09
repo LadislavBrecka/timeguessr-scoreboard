@@ -1,5 +1,6 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { isMongoConfigured } from "./db";
 
 export type Round = {
   id: string;
@@ -13,8 +14,10 @@ export type GuessDetail = {
   points: number;
   yearsOff?: number;
   distanceOff?: string; // e.g. "399.3 km" or "21.3 m"
-  /** Filename for preview image in data/previews (e.g. "entryId-0.jpg"). */
+  /** Filename for preview (e.g. "entryId-0.jpg") or index when stored in DB ("0"). */
   imagePath?: string;
+  /** Base64 data URL for preview when stored in MongoDB; not sent to client. */
+  imageData?: string;
 };
 
 export type ScoreEntry = {
@@ -42,6 +45,14 @@ async function ensureDataDir() {
 }
 
 export async function loadStore(): Promise<Store> {
+  if (isMongoConfigured()) {
+    try {
+      const { loadStoreMongo } = await import("./store-mongo");
+      return await loadStoreMongo();
+    } catch {
+      return { ...emptyStore };
+    }
+  }
   try {
     const raw = await readFile(STORE_PATH, "utf-8");
     return JSON.parse(raw) as Store;
@@ -51,6 +62,11 @@ export async function loadStore(): Promise<Store> {
 }
 
 export async function saveStore(store: Store): Promise<void> {
+  if (isMongoConfigured()) {
+    const { saveStoreMongo } = await import("./store-mongo");
+    await saveStoreMongo(store);
+    return;
+  }
   await ensureDataDir();
   await writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf-8");
 }

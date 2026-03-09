@@ -1,0 +1,17 @@
+# Local MongoDB for testing the app with database persistence.
+# Run: docker compose up -d
+# Then set in .env: MONGODB_URI=mongodb://localhost:27017
+# Start the app: npm run dev
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: timeguessr-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
