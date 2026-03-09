@@ -20,6 +20,9 @@
 # production
 /build
 
+# local scoreboard data
+/data/
+
 # misc
 .DS_Store
 *.pem
