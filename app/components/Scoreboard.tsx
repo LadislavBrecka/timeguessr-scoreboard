@@ -264,9 +264,9 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 <div className="grid grid-cols-[2rem_1fr_5rem_5rem_5rem_2rem] gap-x-4 -mx-2 px-2 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
                   <span className="flex items-center justify-center">#</span>
                   <span className="flex items-center">Player</span>
-                  <span className="flex items-center justify-center">Rounds</span>
-                  <span className="flex items-center justify-center">Max</span>
-                  <span className="flex items-center justify-center">Points</span>
+                  <span className="-ml-8 flex items-center justify-center">Rounds</span>
+                <span className="-ml-8 flex items-center justify-center">Max</span>
+                <span className="-ml-8 flex items-center justify-center">Points</span>
                   <span aria-hidden />
                 </div>
               </div>
