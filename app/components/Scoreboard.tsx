@@ -547,20 +547,45 @@ function PlayerRow({
                 year: "numeric",
               });
               const rankLabel = eventRank === 1 ? "1st" : eventRank === 2 ? "2nd" : eventRank === 3 ? "3rd" : `${eventRank}th`;
+              const rankBadgeClass =
+                eventRank === 1
+                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"
+                  : eventRank === 2
+                    ? "bg-stone-200 text-stone-700 dark:bg-stone-600 dark:text-stone-200"
+                    : eventRank === 3
+                      ? "bg-amber-200/80 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300"
+                      : "bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300";
               return (
                 <div
                   key={event.id}
                   className="rounded-lg border border-stone-200 bg-white p-3 dark:border-stone-700 dark:bg-stone-800/50"
                 >
-                  <p className="mb-2 text-sm font-medium text-stone-800 dark:text-stone-200">
-                    {event.name}
-                  </p>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-stone-800 dark:text-stone-200">
+                      {event.name}
+                    </p>
+                    {eventRank > 0 && (
+                      <>
+                        <span
+                          className={`inline-flex shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${rankBadgeClass}`}
+                          aria-label={`Placed ${rankLabel}`}
+                        >
+                          {rankLabel}
+                        </span>
+                        {eventPoints > 0 && (
+                          <span
+                            className="inline-flex shrink-0 rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
+                            aria-label={`+${eventPoints} points`}
+                          >
+                            +{eventPoints} pts
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
                   <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
                     {eventDateStr} · Event total:{" "}
                     {eventTotalScore.toLocaleString("en-GB")} pts
-                    {eventRank > 0 && (
-                      <> · {rankLabel}{eventPoints > 0 && <> · +{eventPoints} pts</>}</>
-                    )}
                   </p>
                   <p className="mb-1.5 text-xs font-medium text-stone-600 dark:text-stone-400">
                     Games
