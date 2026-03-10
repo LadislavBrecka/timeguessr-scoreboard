@@ -33,6 +33,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
   const [addPending, setAddPending] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [howItWorksExpanded, setHowItWorksExpanded] = useState(true);
 
   const screenshotRoundRef = useRef<HTMLSelectElement>(null);
   const submitScreenshotRef = useRef<(formData: FormData) => Promise<void>>(
@@ -166,14 +167,49 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
       </div>
 
       <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-200">
-              Scoreboard
-            </h2>
-            <p className="mt-0.5 text-sm text-stone-600 dark:text-stone-400">
-              Players by event points (1st = 3, 2nd = 2, 3rd = 1 per event). Expand to see events and games.
-            </p>
+        <h2 className="mb-2 text-lg font-semibold text-stone-800 dark:text-stone-200">
+          Scoreboard
+        </h2>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="rounded-lg border border-amber-200 bg-amber-50/60 dark:border-amber-800/50 dark:bg-amber-950/20">
+              <button
+                type="button"
+                onClick={() => setHowItWorksExpanded((e) => !e)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm font-medium text-stone-700 transition hover:bg-amber-100/50 dark:text-stone-300 dark:hover:bg-amber-900/20"
+                aria-expanded={howItWorksExpanded}
+              >
+                How it works
+                <span className="shrink-0 text-stone-400 dark:text-stone-500" aria-hidden>
+                  {howItWorksExpanded ? "▼" : "▶"}
+                </span>
+              </button>
+              {howItWorksExpanded && (
+                <div className="space-y-3 border-t border-amber-200/80 px-3 py-3 dark:border-amber-800/30">
+                  <p className="text-sm text-stone-600 dark:text-stone-400">
+                    <strong className="text-stone-700 dark:text-stone-300">Structure:</strong>{" "}
+                    Each <strong>event</strong> has several <strong>games</strong> (as many as time allows at the social). Each game has guesses and produces a <strong>score</strong>.
+                  </p>
+                  <p className="text-sm text-stone-600 dark:text-stone-400">
+                    <strong className="text-stone-700 dark:text-stone-300">Ranking:</strong>{" "}
+                    Your event total is the <strong>sum of all your game scores</strong> in that event. Players are ranked by that sum. Based on ranking, they get event points assigned, according to this table:
+                  </p>
+                  <div className="space-y-1.5">
+                    <span className="block rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">1st place → 3 pts</span>
+                    <span className="block rounded bg-stone-200 px-2 py-1 text-xs font-semibold text-stone-700 dark:bg-stone-600 dark:text-stone-200">2nd place → 2 pts</span>
+                    <span className="block rounded bg-amber-200/80 px-2 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950/60 dark:text-amber-300">3rd place → 1 pt</span>
+                    <span className="block rounded bg-stone-100 px-2 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">4th and below → 0 pts</span>
+                  </div>
+                  <p className="text-sm text-stone-600 dark:text-stone-400">
+                    The scoreboard shows <strong className="text-stone-700 dark:text-stone-300">total event points</strong> across all events. Click a player row to expand events, games, and guess details.
+                  </p>
+                  <p className="text-sm text-stone-600 dark:text-stone-400">
+                    <strong className="text-stone-700 dark:text-stone-300">Adding scores:</strong>{" "}
+                    Log in as a player to add your TimeGuessr scores (type them in or upload a screenshot).
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
           {isPlayer ? (
             <button
@@ -184,12 +220,12 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 setAddSuccess(null);
               }}
               disabled={rounds.length === 0}
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50"
+              className="shrink-0 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50"
             >
               + Add score
             </button>
           ) : session?.user ? (
-            <p className="text-sm text-stone-500 dark:text-stone-400">
+            <p className="py-2 text-sm text-stone-500 dark:text-stone-400">
               You&apos;re logged in as admin.{" "}
               <Link href="/login" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">
                 Log in as a player
@@ -197,7 +233,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
               {" to add your own scores."}
             </p>
           ) : (
-            <p className="text-sm text-stone-500 dark:text-stone-400">
+            <p className="py-2 text-sm text-stone-500 dark:text-stone-400">
               <Link href="/login" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">
                 Log in
               </Link>
