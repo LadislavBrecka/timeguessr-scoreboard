@@ -54,14 +54,19 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   async function handleAddScore(formData: FormData) {
     setAddError(null);
     setAddSuccess(null);
-    const result = await addScore(formData);
-    if (result.error) {
-      setAddError(result.error);
-      return;
+    setAddPending(true);
+    try {
+      const result = await addScore(formData);
+      if (result.error) {
+        setAddError(result.error);
+        return;
+      }
+      setAddSuccess("Score added.");
+      setAddModalOpen(false);
+      await refreshData();
+    } finally {
+      setAddPending(false);
     }
-    setAddSuccess("Score added.");
-    setAddModalOpen(false);
-    await refreshData();
   }
 
   async function handleAddScoreFromScreenshot(formData: FormData) {
@@ -100,6 +105,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   useEffect(() => {
     if (!addModalOpen || addMode !== "screenshot") return;
     function onPaste(e: ClipboardEvent) {
+      if (addPending) return;
       const file = e.clipboardData?.files?.[0]
         ?? Array.from(e.clipboardData?.items ?? []).find(
             (item) => item.type.startsWith("image/")
@@ -120,7 +126,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
     }
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
-  }, [addModalOpen, addMode]);
+  }, [addModalOpen, addMode, addPending]);
 
   return (
     <div className="space-y-10">
@@ -338,7 +344,10 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
             <div className="flex flex-wrap items-end gap-4">
               {addMode === "type" ? (
                 <form
-                  action={handleAddScore}
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await handleAddScore(new FormData(e.currentTarget));
+                  }}
                   className="flex flex-wrap items-end gap-4"
                 >
                   <label className="flex flex-col gap-1">
@@ -346,8 +355,8 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                     <select
                       name="roundId"
                       defaultValue={currentRoundId}
-                      disabled={rounds.length === 0}
-                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+                      disabled={rounds.length === 0 || addPending}
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100 disabled:opacity-60"
                     >
                       {rounds.map((r) => (
                         <option key={r.id} value={r.id}>
@@ -365,21 +374,32 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                       min={0}
                       step={1}
                       placeholder="0"
-                      className="w-24 rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+                      disabled={addPending}
+                      className="w-24 rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100 disabled:opacity-60"
                     />
                   </label>
                   <button
                     type="submit"
-                    disabled={rounds.length === 0}
-                    className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50"
+                    disabled={rounds.length === 0 || addPending}
+                    className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    Add score
+                    {addPending ? (
+                      <>
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-stone-900/30 border-t-stone-900 dark:border-stone-100/30 dark:border-t-stone-100" aria-hidden />
+                        Adding…
+                      </>
+                    ) : (
+                      "Add score"
+                    )}
                   </button>
                 </form>
               ) : (
                 <>
                   <form
-                    action={handleAddScoreFromScreenshot}
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      await handleAddScoreFromScreenshot(new FormData(e.currentTarget));
+                    }}
                     className="flex flex-wrap items-end gap-4"
                   >
                     <label className="flex flex-col gap-1">
@@ -388,8 +408,8 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                         ref={screenshotRoundRef}
                         name="roundId"
                         defaultValue={currentRoundId}
-                        disabled={rounds.length === 0}
-                        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+                        disabled={rounds.length === 0 || addPending}
+                        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100 disabled:opacity-60"
                       >
                         {rounds.map((r) => (
                           <option key={r.id} value={r.id}>
@@ -405,15 +425,23 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                         name="screenshot"
                         accept="image/*"
                         required
-                        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 file:mr-3 file:rounded file:border-0 file:bg-amber-100 file:px-3 file:py-1 file:text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100 dark:file:bg-amber-900/40 dark:file:text-stone-200"
+                        disabled={addPending}
+                        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 file:mr-3 file:rounded file:border-0 file:bg-amber-100 file:px-3 file:py-1 file:text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100 dark:file:bg-amber-900/40 dark:file:text-stone-200 disabled:opacity-60"
                       />
                     </label>
                     <button
                       type="submit"
                       disabled={rounds.length === 0 || addPending}
-                      className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50"
+                      className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50 disabled:pointer-events-none"
                     >
-                      {addPending ? "Reading…" : "Upload & add score"}
+                      {addPending ? (
+                        <>
+                          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-stone-900/30 border-t-stone-900 dark:border-stone-100/30 dark:border-t-stone-100" aria-hidden />
+                          Processing…
+                        </>
+                      ) : (
+                        "Upload & add score"
+                      )}
                     </button>
                   </form>
                   <p className="mt-2 w-full text-sm text-stone-500 dark:text-stone-400">
