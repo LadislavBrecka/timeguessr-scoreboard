@@ -2,11 +2,8 @@
 
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { authOptions, isAdminSession } from "@/lib/auth";
 import { loadStore, saveStore, generateId } from "@/lib/store";
-import { isMongoConfigured } from "@/lib/db";
 import { extractScoreFromImage } from "@/lib/extract-score-from-screenshot";
 import type { Round, ScoreEntry, GuessDetail } from "@/lib/store";
 import { EVENT_POINTS } from "@/lib/scoreboard";
@@ -20,8 +17,8 @@ export type SubScoreEntry = {
   guessDetails?: GuessDetail[];
 };
 
-/** One game in an event: total game score + optional per-guess details. entryId needed for preview images when using MongoDB. */
-export type GameEntry = SubScoreEntry & { entryId?: string };
+/** One game in an event: total game score + optional per-guess details. */
+export type GameEntry = SubScoreEntry;
 
 export type RoundWithSubScores = Round & {
   entries: ScoreEntry[];
@@ -145,7 +142,7 @@ export async function getScoreboardByPlayer(): Promise<PlayerScoreboardEntry[]> 
       Array.isArray(e.guessDetails) && e.guessDetails.length > 0
         ? e.guessDetails
         : undefined;
-    roundData.games.push({ score: e.score, guessDetails, entryId: e.id });
+    roundData.games.push({ score: e.score, guessDetails });
     roundData.totalScore += e.score;
     player.byRound.set(e.roundId, roundData);
   }
@@ -290,55 +287,13 @@ export async function addScoreFromScreenshot(
   if (!store.rounds.some((r) => r.id === roundId)) {
     return { error: "Round not found." };
   }
-  const entryId = generateId();
-  const useMongo = isMongoConfigured();
-  let guessDetails: GuessDetail[] | undefined;
-  if (result.guessDetails?.length) {
-    if (useMongo) {
-      guessDetails = result.guessDetails.map((g, i) => {
-        const out: GuessDetail = {
-          points: g.points,
-          ...(g.yearsOff !== undefined && { yearsOff: g.yearsOff }),
-          ...(g.distanceOff && { distanceOff: g.distanceOff }),
-          imagePath: String(i),
-          ...(g.imageData?.startsWith("data:image") && { imageData: g.imageData }),
-        };
-        return out;
-      });
-    } else {
-      const previewsDir = path.join(process.cwd(), "data", "previews");
-      const hasPreviews = result.guessDetails.some(
-        (g) => g.imageData?.startsWith("data:image")
-      );
-      if (hasPreviews) {
-        await mkdir(previewsDir, { recursive: true });
-        await Promise.all(
-          result.guessDetails.map(async (g, i) => {
-            if (!g.imageData?.startsWith("data:image")) return;
-            const base64 = g.imageData.replace(/^data:image\/\w+;base64,/, "");
-            await writeFile(
-              path.join(previewsDir, `${entryId}-${i}.jpg`),
-              Buffer.from(base64, "base64")
-            );
-          })
-        );
-      }
-      guessDetails = result.guessDetails.map((g, i) => {
-        const { imageData, ...rest } = g;
-        const out: GuessDetail = { ...rest };
-        if (imageData?.startsWith("data:image"))
-          out.imagePath = `${entryId}-${i}.jpg`;
-        return out;
-      });
-    }
-  }
   const entry: ScoreEntry = {
-    id: entryId,
+    id: generateId(),
     roundId,
     playerName,
     score: result.totalScore,
     createdAt: new Date().toISOString(),
-    guessDetails,
+    guessDetails: result.guessDetails?.length ? result.guessDetails : undefined,
   };
   store.scores.push(entry);
   await saveStore(store);

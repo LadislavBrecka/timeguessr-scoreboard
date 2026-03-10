@@ -14,10 +14,6 @@ export type GuessDetail = {
   points: number;
   yearsOff?: number;
   distanceOff?: string; // e.g. "399.3 km" or "21.3 m"
-  /** Filename for preview (e.g. "entryId-0.jpg") or index when stored in DB ("0"). */
-  imagePath?: string;
-  /** Base64 data URL for preview when stored in MongoDB; not sent to client. */
-  imageData?: string;
 };
 
 export type ScoreEntry = {

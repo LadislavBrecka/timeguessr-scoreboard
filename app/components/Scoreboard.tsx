@@ -601,25 +601,12 @@ function PlayerRow({
                               <p className="mb-1.5 text-xs font-medium text-stone-500 dark:text-stone-400">
                                 Guesses
                               </p>
-                              <ul className="space-y-2 text-xs text-stone-600 dark:text-stone-400">
+                              <ul className="space-y-1 text-xs text-stone-600 dark:text-stone-400">
                                 {game.guessDetails.map((g: GuessDetail, gi: number) => (
-                                  <li key={gi} className="flex items-start gap-2">
-                                    {g.imagePath && (
-                                      <img
-                                        src={
-                                          game.entryId
-                                            ? `/api/preview/${game.entryId}/${g.imagePath}`
-                                            : `/api/preview/${g.imagePath}`
-                                        }
-                                        alt={`Guess ${gi + 1}`}
-                                        className="h-12 w-12 shrink-0 rounded object-cover"
-                                      />
-                                    )}
-                                    <span>
-                                      Guess {gi + 1}: {g.points} pts
-                                      {g.yearsOff != null && ` · ${g.yearsOff} yrs off`}
-                                      {g.distanceOff && ` · ${g.distanceOff}`}
-                                    </span>
+                                  <li key={gi}>
+                                    Guess {gi + 1}: {g.points} pts
+                                    {g.yearsOff != null && ` · ${g.yearsOff} yrs off`}
+                                    {g.distanceOff && ` · ${g.distanceOff}`}
                                   </li>
                                 ))}
                               </ul>

@@ -7,7 +7,7 @@ const SCORES = "scores";
 /** Round document in MongoDB (we use string _id). */
 type RoundDoc = { _id: string; name: string; date: string; createdAt: string };
 
-/** Score document as stored in MongoDB (_id, no id; guessDetails may include imageData). */
+/** Score document as stored in MongoDB (_id, no id). */
 type ScoreDocStored = {
   _id: string;
   roundId: string;
@@ -18,8 +18,6 @@ type ScoreDocStored = {
     points: number;
     yearsOff?: number;
     distanceOff?: string;
-    imagePath?: string;
-    imageData?: string;
   }>;
 };
 
@@ -33,20 +31,13 @@ function docToRound(doc: RoundDoc): Round {
 }
 
 function docToScore(doc: ScoreDocStored): ScoreEntry {
-  const entryId = String(doc._id);
-  const guessDetails = doc.guessDetails?.map((g, i) => {
-    const { imageData, ...rest } = g;
-    const out = { ...rest };
-    if (imageData) out.imagePath = String(i);
-    return out;
-  });
   return {
-    id: entryId,
+    id: String(doc._id),
     roundId: doc.roundId,
     playerName: doc.playerName,
     score: doc.score,
     createdAt: doc.createdAt,
-    guessDetails: guessDetails?.length ? guessDetails : undefined,
+    guessDetails: doc.guessDetails?.length ? doc.guessDetails : undefined,
   };
 }
 
@@ -88,7 +79,7 @@ export async function saveStoreMongo(store: Store): Promise<void> {
         playerName: e.playerName,
         score: e.score,
         createdAt: e.createdAt,
-        guessDetails: e.guessDetails, // may include imageData for previews
+        guessDetails: e.guessDetails,
       }))
     );
   }

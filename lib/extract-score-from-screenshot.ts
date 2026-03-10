@@ -1,25 +1,19 @@
 /**
- * Uses OpenAI Vision API to extract the total game score, per-guess details,
- * and per-guess preview image regions from a TimeGuessr results screenshot.
- * Requires OPENAI_API_KEY. Uses Sharp to crop preview thumbnails when regions are returned.
+ * Uses OpenAI Vision API to extract the total game score and per-guess details
+ * from a TimeGuessr results screenshot.
+ * Requires OPENAI_API_KEY in the environment.
  */
 
 import OpenAI from "openai";
-import sharp from "sharp";
 import type { GuessDetail } from "./store";
 
-export type GuessDetailWithPreview = GuessDetail & { imageData?: string };
-
 export type ExtractResult =
-  | { ok: true; totalScore: number; guessDetails?: GuessDetailWithPreview[] }
+  | { ok: true; totalScore: number; guessDetails?: GuessDetail[] }
   | { ok: false; error: string };
-
-type PreviewRegion = { x: number; y: number; width: number; height: number };
 
 const SYSTEM_PROMPT = `You are extracting data from a TimeGuessr game results screenshot.
 
-The image shows a score (e.g. "38,866 / 50,000" at the top) and a list of 5 guesses. Each guess row typically has:
-- a small preview/thumbnail image (the location or moment for that guess)
+The image shows a score (e.g. "38,866 / 50,000" at the top) and a list of 5 guesses. Each guess may show:
 - points (e.g. "6988 pts")
 - optional "X yrs off" and distance (e.g. "444.6 m" or "5373.9 km")
 
@@ -29,17 +23,12 @@ Return a single JSON object with this exact shape (no markdown, no code fence):
   "guessDetails": [
     { "points": <number>, "yearsOff": <number or null>, "distanceOff": "<value> <unit>" or null },
     ... exactly 5 items, one per guess
-  ],
-  "previewRegions": [
-    { "x": <0-1>, "y": <0-1>, "width": <0-1>, "height": <0-1> },
-    ... exactly 5 items, one per guess
   ]
 }
 
 Rules:
 - totalScore: the main score at the top (before "/ 50,000"). Between 10000 and 50000.
-- guessDetails: exactly 5 objects in order Guess 1 to Guess 5. Each: points (required, 0-10000), yearsOff (number or null), distanceOff (string or null). Use null for missing.
-- previewRegions: exactly 5 objects. Each is the bounding box of that guess's preview/thumbnail image, as fractions of the full image (0 to 1). x,y = top-left; width,height = size. Order must match guess 1 to 5. If a preview is not clearly visible, use your best estimate.`;
+- guessDetails: exactly 5 objects in order Guess 1 to Guess 5. Each: points (required, 0-10000), yearsOff (number or null), distanceOff (string or null). Use null for missing.`;
 
 export async function extractScoreFromImage(
   imageBuffer: Buffer,
@@ -62,7 +51,7 @@ export async function extractScoreFromImage(
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      max_tokens: 1536,
+      max_tokens: 1024,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {
@@ -93,7 +82,6 @@ export async function extractScoreFromImage(
         yearsOff?: number | null;
         distanceOff?: string | null;
       }>;
-      previewRegions?: Array<{ x?: number; y?: number; width?: number; height?: number }>;
     };
 
     const totalScore = parsed.totalScore;
@@ -110,7 +98,7 @@ export async function extractScoreFromImage(
       };
     }
 
-    const guessDetails: GuessDetailWithPreview[] = [];
+    const guessDetails: GuessDetail[] = [];
     const list = Array.isArray(parsed.guessDetails) ? parsed.guessDetails : [];
     for (let i = 0; i < Math.min(5, list.length); i++) {
       const g = list[i];
@@ -132,37 +120,6 @@ export async function extractScoreFromImage(
         ...(yearsOff !== undefined && { yearsOff }),
         ...(distanceOff !== undefined && { distanceOff }),
       });
-    }
-
-    // Crop preview thumbnails from screenshot using reported regions
-    const regions = Array.isArray(parsed.previewRegions) ? parsed.previewRegions : [];
-    if (guessDetails.length > 0 && regions.length >= guessDetails.length) {
-      try {
-        const meta = await sharp(imageBuffer).metadata();
-        const imgW = meta.width ?? 0;
-        const imgH = meta.height ?? 0;
-        if (imgW > 0 && imgH > 0) {
-          for (let i = 0; i < guessDetails.length && i < regions.length; i++) {
-            const r = regions[i];
-            const x = Math.max(0, Math.min(1, Number(r?.x) || 0));
-            const y = Math.max(0, Math.min(1, Number(r?.y) || 0));
-            const w = Math.max(0.01, Math.min(1 - x, Number(r?.width) || 0.1));
-            const h = Math.max(0.01, Math.min(1 - y, Number(r?.height) || 0.1));
-            const left = Math.floor(x * imgW);
-            const top = Math.floor(y * imgH);
-            const width = Math.max(1, Math.floor(w * imgW));
-            const height = Math.max(1, Math.floor(h * imgH));
-            const cropped = await sharp(imageBuffer)
-              .extract({ left, top, width, height })
-              .jpeg({ quality: 85 })
-              .toBuffer();
-            const b64 = cropped.toString("base64");
-            guessDetails[i].imageData = `data:image/jpeg;base64,${b64}`;
-          }
-        }
-      } catch {
-        // ignore crop errors; guess details without previews are still valid
-      }
     }
 
     return {
