@@ -1,28 +1,36 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { compare } from "bcryptjs";
+import { loadStore } from "./store";
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "Admin",
+      id: "credentials",
+      name: "Username & password",
       credentials: {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const username = process.env.ADMIN_USERNAME ?? "admin";
-        const password = process.env.ADMIN_PASSWORD;
-        if (!password) {
-          console.warn("ADMIN_PASSWORD is not set; admin login will fail.");
-          return null;
+        const username = (credentials?.username ?? "").trim();
+        const password = credentials?.password ?? "";
+        if (!username || !password) return null;
+
+        const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        if (adminPassword && username === adminUsername && password === adminPassword) {
+          return { id: "admin", name: adminUsername, role: "admin" };
         }
-        if (
-          credentials?.username === username &&
-          credentials?.password === password
-        ) {
-          return { id: "admin", name: "Admin", role: "admin" };
-        }
-        return null;
+
+        const store = await loadStore();
+        const user = store.users.find(
+          (u) => u.username === username
+        );
+        if (!user) return null;
+        const ok = await compare(password, user.passwordHash);
+        if (!ok) return null;
+        return { id: user.username, name: user.username, role: "player" };
       },
     }),
   ],
@@ -49,4 +57,8 @@ export const authOptions: NextAuthOptions = {
 
 export function isAdminSession(session: { user?: { role?: string } } | null): boolean {
   return session?.user?.role === "admin";
+}
+
+export function isPlayerSession(session: { user?: { role?: string; name?: string | null } } | null): boolean {
+  return session?.user?.role === "player";
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { signIn, signOut } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 import {
   addScore,
   addScoreFromScreenshot,
@@ -12,6 +13,10 @@ import {
 } from "@/app/actions";
 import type { GuessDetail } from "@/lib/store";
 
+function isPlayerSession(session: { user?: { role?: string } } | null): boolean {
+  return session?.user?.role === "player";
+}
+
 type Props = {
   initialRounds: RoundWithTotals[];
   initialPlayers: PlayerScoreboardEntry[];
@@ -19,6 +24,8 @@ type Props = {
 };
 
 export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<Props>) {
+  const { data: session, status } = useSession();
+  const isPlayer = isPlayerSession(session);
   const [rounds, setRounds] = useState<RoundWithTotals[]>(initialRounds);
   const [players, setPlayers] = useState<PlayerScoreboardEntry[]>(initialPlayers);
   const [expandedPlayerName, setExpandedPlayerName] = useState<string | null>(null);
@@ -31,7 +38,6 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   const [createError, setCreateError] = useState<string | null>(null);
 
   const screenshotRoundRef = useRef<HTMLSelectElement>(null);
-  const screenshotNameRef = useRef<HTMLInputElement>(null);
   const submitScreenshotRef = useRef<(formData: FormData) => Promise<void>>(
     () => Promise.resolve()
   );
@@ -103,16 +109,14 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
       if (!file?.type.startsWith("image/")) return;
       e.preventDefault();
       const roundId = screenshotRoundRef.current?.value;
-      const playerName = screenshotNameRef.current?.value?.trim();
-      if (!roundId || !playerName) {
-        setAddError("Select a round and enter your name first.");
+      if (!roundId) {
+        setAddError("Select a round first.");
         return;
       }
       setAddError(null);
       setAddSuccess(null);
       const formData = new FormData();
       formData.set("roundId", roundId);
-      formData.set("playerName", playerName);
       formData.set("screenshot", file);
       submitScreenshotRef.current(formData);
     }
@@ -145,10 +149,17 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-center justify-end gap-2 border-b border-stone-200 pb-4 dark:border-stone-700">
-        {isAdmin ? (
+        {status === "loading" ? (
+          <span className="text-sm text-stone-500 dark:text-stone-400">Loading…</span>
+        ) : session?.user ? (
           <>
-            <span className="text-sm text-stone-500 dark:text-stone-400">
-              Admin
+            <span className="text-sm text-stone-600 dark:text-stone-300">
+              Logged in as <strong>{session.user.name}</strong>
+              {isAdmin && (
+                <span className="ml-1.5 rounded bg-stone-200 px-1.5 py-0.5 text-xs font-medium text-stone-700 dark:bg-stone-600 dark:text-stone-200">
+                  Admin
+                </span>
+              )}
             </span>
             <button
               type="button"
@@ -159,13 +170,20 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => signIn(undefined, { callbackUrl: "/" })}
-            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            Sign in (admin)
-          </button>
+          <>
+            <Link
+              href="/login"
+              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-stone-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-stone-600 dark:bg-stone-600 dark:hover:bg-stone-500"
+            >
+              Register
+            </Link>
+          </>
         )}
       </div>
 
@@ -179,18 +197,31 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
               Players by event points (1st = 3, 2nd = 2, 3rd = 1 per event). Expand to see events and games.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setAddModalOpen(true);
-              setAddError(null);
-              setAddSuccess(null);
-            }}
-            disabled={rounds.length === 0}
-            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50"
-          >
-            + Add score
-          </button>
+          {isPlayer ? (
+            <button
+              type="button"
+              onClick={() => {
+                setAddModalOpen(true);
+                setAddError(null);
+                setAddSuccess(null);
+              }}
+              disabled={rounds.length === 0}
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 transition hover:bg-amber-400 disabled:opacity-50"
+            >
+              + Add score
+            </button>
+          ) : (
+            <p className="text-sm text-stone-500 dark:text-stone-400">
+              <Link href="/login" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">
+                Log in
+              </Link>
+              {" or "}
+              <Link href="/register" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">
+                register
+              </Link>
+              {" to add your score."}
+            </p>
+          )}
         </div>
         <div className="overflow-hidden rounded-2xl border border-stone-300 bg-white shadow-sm dark:border-stone-600 dark:bg-stone-900">
           {players.length === 0 ? (
@@ -304,16 +335,6 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-stone-600 dark:text-stone-400">Name</span>
-                    <input
-                      type="text"
-                      name="playerName"
-                      required
-                      placeholder="Your name"
-                      className="min-w-[140px] rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
                     <span className="text-sm text-stone-600 dark:text-stone-400">Score</span>
                     <input
                       type="number"
@@ -354,17 +375,6 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                           </option>
                         ))}
                       </select>
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-sm text-stone-600 dark:text-stone-400">Name</span>
-                      <input
-                        ref={screenshotNameRef}
-                        type="text"
-                        name="playerName"
-                        required
-                        placeholder="Your name"
-                        className="min-w-[140px] rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
-                      />
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className="text-sm text-stone-600 dark:text-stone-400">Screenshot</span>

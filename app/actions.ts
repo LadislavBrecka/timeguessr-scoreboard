@@ -2,11 +2,17 @@
 
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
-import { authOptions, isAdminSession } from "@/lib/auth";
+import { hash } from "bcryptjs";
+import { authOptions, isAdminSession, isPlayerSession } from "@/lib/auth";
 import { loadStore, saveStore, generateId } from "@/lib/store";
 import { extractScoreFromImage } from "@/lib/extract-score-from-screenshot";
 import type { Round, ScoreEntry, GuessDetail } from "@/lib/store";
 import { EVENT_POINTS } from "@/lib/scoreboard";
+
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "admin";
+const USERNAME_MIN = 2;
+const USERNAME_MAX = 32;
+const PASSWORD_MIN = 8;
 
 export type RoundWithTotals = Round & {
   playerTotals: { playerName: string; totalScore: number }[];
@@ -237,13 +243,49 @@ export async function deleteRound(roundId: string): Promise<{ error?: string }> 
   return {};
 }
 
-export async function addScore(formData: FormData): Promise<{ error?: string }> {
-  const roundId = formData.get("roundId") as string;
-  const playerName = (formData.get("playerName") as string)?.trim();
-  const scoreStr = formData.get("score") as string;
-  if (!roundId || !playerName) {
-    return { error: "Round and name are required." };
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+export async function register(formData: FormData): Promise<{ error?: string }> {
+  const username = (formData.get("username") as string)?.trim() ?? "";
+  const password = (formData.get("password") as string) ?? "";
+  const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
+  if (!username) return { error: "Username is required." };
+  if (username.length < USERNAME_MIN || username.length > USERNAME_MAX) {
+    return { error: `Username must be ${USERNAME_MIN}–${USERNAME_MAX} characters.` };
   }
+  if (!USERNAME_REGEX.test(username)) {
+    return { error: "Username can only contain letters, numbers, underscore, and hyphen." };
+  }
+  if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
+    return { error: "This username is reserved." };
+  }
+  if (password.length < PASSWORD_MIN) {
+    return { error: `Password must be at least ${PASSWORD_MIN} characters.` };
+  }
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match." };
+  }
+  const store = await loadStore();
+  if (store.users.some((u) => u.username === username)) {
+    return { error: "Username is already taken." };
+  }
+  const passwordHash = await hash(password, 10);
+  store.users.push({ username, passwordHash });
+  await saveStore(store);
+  revalidatePath("/");
+  return {};
+}
+
+export async function addScore(formData: FormData): Promise<{ error?: string }> {
+  const session = await getServerSession(authOptions);
+  if (!isPlayerSession(session)) {
+    return { error: "Sign in as a player to add your score." };
+  }
+  const playerName = (session!.user!.name ?? "").trim();
+  if (!playerName) return { error: "Session error: no username." };
+  const roundId = formData.get("roundId") as string;
+  const scoreStr = formData.get("score") as string;
+  if (!roundId) return { error: "Round is required." };
   const score = Math.round(Number(scoreStr));
   if (Number.isNaN(score) || score < 0) {
     return { error: "Score must be a non-negative number." };
@@ -268,12 +310,15 @@ export async function addScore(formData: FormData): Promise<{ error?: string }> 
 export async function addScoreFromScreenshot(
   formData: FormData
 ): Promise<{ error?: string; extractedScore?: number }> {
-  const roundId = formData.get("roundId") as string;
-  const playerName = (formData.get("playerName") as string)?.trim();
-  const file = formData.get("screenshot") as File | null;
-  if (!roundId || !playerName) {
-    return { error: "Round and name are required." };
+  const session = await getServerSession(authOptions);
+  if (!isPlayerSession(session)) {
+    return { error: "Sign in as a player to add your score." };
   }
+  const playerName = (session!.user!.name ?? "").trim();
+  if (!playerName) return { error: "Session error: no username." };
+  const roundId = formData.get("roundId") as string;
+  const file = formData.get("screenshot") as File | null;
+  if (!roundId) return { error: "Round is required." };
   if (!file || file.size === 0) {
     return { error: "Please choose a screenshot image." };
   }

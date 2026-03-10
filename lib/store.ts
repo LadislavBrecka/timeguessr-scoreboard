@@ -26,15 +26,21 @@ export type ScoreEntry = {
   guessDetails?: GuessDetail[];
 };
 
+export type User = {
+  username: string;
+  passwordHash: string;
+};
+
 export type Store = {
   rounds: Round[];
   scores: ScoreEntry[];
+  users: User[];
 };
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 
-const emptyStore: Store = { rounds: [], scores: [] };
+const emptyStore: Store = { rounds: [], scores: [], users: [] };
 
 async function ensureDataDir() {
   await mkdir(DATA_DIR, { recursive: true });
@@ -51,7 +57,12 @@ export async function loadStore(): Promise<Store> {
   }
   try {
     const raw = await readFile(STORE_PATH, "utf-8");
-    return JSON.parse(raw) as Store;
+    const parsed = JSON.parse(raw) as Partial<Store>;
+    return {
+      rounds: parsed.rounds ?? [],
+      scores: parsed.scores ?? [],
+      users: parsed.users ?? [],
+    };
   } catch {
     return { ...emptyStore };
   }

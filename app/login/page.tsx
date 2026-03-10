@@ -37,11 +37,10 @@ function LoginForm() {
     <main className="mx-auto flex min-h-[60vh] max-w-sm flex-col justify-center px-4">
       <div className="rounded-2xl border border-stone-300 bg-stone-50/80 p-6 shadow-sm dark:border-stone-600 dark:bg-stone-900/50">
         <h1 className="mb-2 text-xl font-semibold text-stone-900 dark:text-stone-100">
-          Admin login
+          Sign in
         </h1>
         <p className="mb-6 text-sm text-stone-600 dark:text-stone-400">
-          Sign in to create new social events. Anyone can add scores without
-          logging in.
+          Sign in as admin to create events, or as a player to add your scores.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="flex flex-col gap-1">
@@ -73,17 +72,23 @@ function LoginForm() {
           {error && (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-stone-700 px-4 py-2 font-medium text-white transition hover:bg-stone-600 disabled:opacity-50 dark:bg-stone-600 dark:hover:bg-stone-500"
+              className="rounded-lg bg-stone-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-stone-600 disabled:opacity-50 dark:bg-stone-600 dark:hover:bg-stone-500"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
             <Link
+              href="/register"
+              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+            >
+              Create account
+            </Link>
+            <Link
               href="/"
-              className="rounded-lg border border-stone-300 px-4 py-2 font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
             >
               Cancel
             </Link>
