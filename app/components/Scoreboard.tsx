@@ -137,7 +137,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 href="/admin"
                 className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-stone-900 transition hover:bg-amber-400 dark:bg-stone-600 dark:text-stone-100 dark:hover:bg-stone-500"
               >
-                Manage events
+                Manage rounds
               </Link>
             )}
             <button
@@ -188,11 +188,11 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 <div className="space-y-3 border-t border-amber-200/80 px-3 py-3 dark:border-amber-800/30">
                   <p className="text-sm text-stone-600 dark:text-stone-400">
                     <strong className="text-stone-700 dark:text-stone-300">Structure:</strong>{" "}
-                    Each <strong>event</strong> has several <strong>games</strong> (as many as time allows at the social). Each game has guesses and produces a <strong>score</strong>.
+                    Each <strong>round (social event)</strong> has several <strong>games</strong> (as many as time allows at the social). Each game has guesses and produces a <strong>score</strong>.
                   </p>
                   <p className="text-sm text-stone-600 dark:text-stone-400">
                     <strong className="text-stone-700 dark:text-stone-300">Ranking:</strong>{" "}
-                    Your event total is the <strong>sum of all your game scores</strong> in that event. Players are ranked by that sum. Based on ranking, they get event points assigned, according to this table:
+                    Your round total is the <strong>sum of all your game scores</strong> in that round. Players are ranked by that sum. Based on ranking, they get round points assigned, according to this table:
                   </p>
                   <div className="space-y-1.5">
                     <span className="block rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">1st place → 3 pts</span>
@@ -201,7 +201,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                     <span className="block rounded bg-stone-100 px-2 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">4th and below → 0 pts</span>
                   </div>
                   <p className="text-sm text-stone-600 dark:text-stone-400">
-                    The scoreboard shows <strong className="text-stone-700 dark:text-stone-300">total event points</strong> across all events. Click a player row to expand events, games, and guess details.
+                    The scoreboard shows <strong className="text-stone-700 dark:text-stone-300">total round points</strong> across all rounds. Click a player row to expand rounds, games, and guess details.
                   </p>
                   <p className="text-sm text-stone-600 dark:text-stone-400">
                     <strong className="text-stone-700 dark:text-stone-300">Adding scores:</strong>{" "}
@@ -249,8 +249,8 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
           {players.length === 0 ? (
             <p className="rounded-xl border-0 border-dashed py-12 text-center text-stone-500 dark:text-stone-400">
               {isAdmin
-                ? "No scores yet. Create an event below, then add scores."
-                : "No scores yet. An admin must create an event first."}
+                ? "No scores yet. Create a round below, then add scores."
+                : "No scores yet. An admin must create a round first."}
             </p>
           ) : (
             <ul className="divide-y divide-stone-200 dark:divide-stone-700">
@@ -431,9 +431,9 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
             {rounds.length === 0 && (
               <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
                 {isAdmin ? (
-                  <>No events yet. <Link href="/admin" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">Create one in Admin</Link> first.</>
+                  <>No rounds yet. <Link href="/admin" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">Create one in Admin</Link> first.</>
                 ) : (
-                  "An admin must create an event first."
+                  "An admin must create a round first."
                 )}
               </p>
             )}
@@ -487,7 +487,7 @@ function PlayerRow({
       {isExpanded && (
         <div className="border-t border-amber-200 bg-amber-50/30 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-950/10">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-            Events
+            Rounds
           </p>
           <div className="space-y-4">
             {player.events.map(({ event, games, eventTotalScore, eventRank, eventPoints }) => {
@@ -535,7 +535,7 @@ function PlayerRow({
                     )}
                   </div>
                   <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
-                    {eventDateStr} · Event total:{" "}
+                    {eventDateStr} · Round total:{" "}
                     {eventTotalScore.toLocaleString("en-GB")} pts
                   </p>
                   <p className="mb-1.5 text-xs font-medium text-stone-600 dark:text-stone-400">

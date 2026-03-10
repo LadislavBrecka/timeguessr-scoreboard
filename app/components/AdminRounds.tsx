@@ -8,7 +8,7 @@ type Props = {
   initialRounds: RoundWithTotals[];
 };
 
-export function AdminEvents({ initialRounds }: Readonly<Props>) {
+export function AdminRounds({ initialRounds }: Readonly<Props>) {
   const [rounds, setRounds] = useState<RoundWithTotals[]>(initialRounds);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
   }
 
   async function handleDeleteRound(roundId: string) {
-    if (!confirm("Delete this event and all its scores? This cannot be undone.")) return;
+    if (!confirm("Delete this round and all its scores? This cannot be undone.")) return;
     const result = await deleteRound(roundId);
     if (result.error) {
       setCreateError(result.error);
@@ -53,7 +53,7 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-          Manage events
+          Manage rounds
         </h1>
         <Link
           href="/"
@@ -66,7 +66,7 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
       <section className="rounded-2xl border border-stone-300 bg-stone-50/80 p-6 shadow-sm dark:border-stone-600 dark:bg-stone-900/50">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-200">
-            Events
+            Rounds
           </h2>
           <button
             type="button"
@@ -76,12 +76,12 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
             }}
             className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 transition hover:bg-amber-400 dark:bg-stone-700 dark:text-stone-100 dark:hover:bg-stone-600"
           >
-            + New event
+            + New round
           </button>
         </div>
         {rounds.length === 0 ? (
           <p className="text-sm text-stone-500 dark:text-stone-400">
-            No events yet. Click &quot;+ New event&quot; to create one.
+            No rounds yet. Click &quot;+ New round&quot; to create one.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -118,7 +118,7 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="create-event-title"
+          aria-labelledby="create-round-title"
         >
           <button
             type="button"
@@ -131,8 +131,8 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
           />
           <div className="relative w-full max-w-lg rounded-2xl border border-stone-300 bg-white p-6 shadow-xl dark:border-stone-600 dark:bg-stone-900">
             <div className="mb-4 flex items-center justify-between">
-              <h3 id="create-event-title" className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-                New social event
+              <h3 id="create-round-title" className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                New round
               </h3>
               <button
                 type="button"
@@ -148,7 +148,7 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
             </div>
             <form action={handleCreateRound} className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
-                <span className="text-sm text-stone-600 dark:text-stone-400">Event name</span>
+                <span className="text-sm text-stone-600 dark:text-stone-400">Round name</span>
                 <input
                   type="text"
                   name="name"
@@ -171,9 +171,9 @@ export function AdminEvents({ initialRounds }: Readonly<Props>) {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="rounded-lg bg-stone-700 px-4 py-2 font-medium text-white transition hover:bg-stone-600 dark:bg-stone-600 dark:hover:bg-stone-500"
+                  className="rounded-lg bg-stone-700 px-4 py-2 font-medium text-white transition hover:bg-stone-600 dark:hover:bg-stone-500"
                 >
-                  Create event
+                  Create round
                 </button>
                 <button
                   type="button"

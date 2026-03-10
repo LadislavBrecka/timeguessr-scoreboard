@@ -19,8 +19,8 @@ export default async function Home() {
           TimeGuessr Scoreboard
         </h1>
         <p className="mt-1 text-stone-600 dark:text-stone-400">
-          Players ranked by total score across all events. Expand a player to see
-          events, games, and guess details.
+          Players ranked by total score across all rounds. Expand a player to see
+          rounds, games, and guess details.
         </p>
       </header>
       <Scoreboard

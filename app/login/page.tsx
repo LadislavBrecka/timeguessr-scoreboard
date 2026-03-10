@@ -40,7 +40,7 @@ function LoginForm() {
           Sign in
         </h1>
         <p className="mb-6 text-sm text-stone-600 dark:text-stone-400">
-          Sign in as admin to create events, or as a player to add your scores.
+          Sign in as admin to create rounds, or as a player to add your scores.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="flex flex-col gap-1">

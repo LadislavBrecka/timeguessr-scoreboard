@@ -5,7 +5,7 @@ import { isMongoConfigured } from "./db";
 export type Round = {
   id: string;
   name: string;
-  date: string; // ISO date of the social event
+  date: string; // ISO date of the round
   createdAt: string;
 };
 

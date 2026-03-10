@@ -23,7 +23,7 @@ export type SubScoreEntry = {
   guessDetails?: GuessDetail[];
 };
 
-/** One game in an event: total game score + optional per-guess details. */
+/** One game in a round: total game score + optional per-guess details. */
 export type GameEntry = SubScoreEntry;
 
 export type RoundWithSubScores = Round & {
@@ -31,22 +31,22 @@ export type RoundWithSubScores = Round & {
   playerTotals: { playerName: string; totalScore: number; subScores: number[]; subScoreEntries?: SubScoreEntry[] }[];
 };
 
-/** Player's participation in one event: the event, their games, and ranking/points. */
+/** Player's participation in one round: the round, their games, and ranking/points. */
 export type PlayerEvent = {
   event: Round;
   games: GameEntry[];
-  /** This player's total score in this event (sum of game scores). */
+  /** This player's total score in this round (sum of game scores). */
   eventTotalScore: number;
-  /** 1-based rank in this event (1 = first, 2 = second, …). */
+  /** 1-based rank in this round (1 = first, 2 = second, …). */
   eventRank: number;
-  /** Points earned in this event (3 for 1st, 2 for 2nd, 1 for 3rd, 0 otherwise). */
+  /** Points earned in this round (3 for 1st, 2 for 2nd, 1 for 3rd, 0 otherwise). */
   eventPoints: number;
 };
 
-/** Player-centric scoreboard row: total event points (3/2/1 per event) and per-event breakdown. */
+/** Player-centric scoreboard row: total round points (3/2/1 per round) and per-round breakdown. */
 export type PlayerScoreboardEntry = {
   playerName: string;
-  /** Sum of event points (3 for 1st, 2 for 2nd, 1 for 3rd in each event). */
+  /** Sum of round points (3 for 1st, 2 for 2nd, 1 for 3rd in each round). */
   totalPoints: number;
   events: PlayerEvent[];
 };
@@ -121,7 +121,7 @@ export async function getRoundWithSubScores(
   return { ...round, entries, playerTotals };
 }
 
-/** Scoreboard ordered by player: total event points (3/2/1 per event), with events → games → guess details. */
+/** Scoreboard ordered by player: total round points (3/2/1 per round), with rounds → games → guess details. */
 export async function getScoreboardByPlayer(): Promise<PlayerScoreboardEntry[]> {
   const store = await loadStore();
   const roundsById = new Map(store.rounds.map((r) => [r.id, r]));
@@ -208,7 +208,7 @@ export async function getScoreboardByPlayer(): Promise<PlayerScoreboardEntry[]> 
 export async function createRound(formData: FormData): Promise<{ error?: string }> {
   const session = await getServerSession(authOptions);
   if (!isAdminSession(session)) {
-    return { error: "Only an admin can create events. Please sign in." };
+    return { error: "Only an admin can create rounds. Please sign in." };
   }
   const name = (formData.get("name") as string)?.trim() || "New Social";
   const dateInput = formData.get("date") as string;
@@ -229,12 +229,12 @@ export async function createRound(formData: FormData): Promise<{ error?: string 
 export async function deleteRound(roundId: string): Promise<{ error?: string }> {
   const session = await getServerSession(authOptions);
   if (!isAdminSession(session)) {
-    return { error: "Only an admin can delete events." };
+    return { error: "Only an admin can delete rounds." };
   }
   const store = await loadStore();
   const roundIndex = store.rounds.findIndex((r) => r.id === roundId);
   if (roundIndex === -1) {
-    return { error: "Event not found." };
+    return { error: "Round not found." };
   }
   store.rounds.splice(roundIndex, 1);
   store.scores = store.scores.filter((s) => s.roundId !== roundId);
