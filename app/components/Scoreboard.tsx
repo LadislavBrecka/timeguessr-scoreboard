@@ -176,7 +176,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
               Scoreboard
             </h2>
             <p className="mt-0.5 text-sm text-stone-600 dark:text-stone-400">
-              Players by total score. Expand a player to see events, games, and guess details.
+              Players by event points (1st = 3, 2nd = 2, 3rd = 1 per event). Expand to see events and games.
             </p>
           </div>
           <button
@@ -523,7 +523,7 @@ function PlayerRow({
             {player.playerName}
           </span>
           <span className="text-stone-700 dark:text-stone-300 tabular-nums">
-            {player.totalScore.toLocaleString("en-GB")}
+            {player.totalPoints} pts
           </span>
           <span
             className="text-stone-400 dark:text-stone-500"
@@ -539,13 +539,14 @@ function PlayerRow({
             Events
           </p>
           <div className="space-y-4">
-            {player.events.map(({ event, games }) => {
+            {player.events.map(({ event, games, eventTotalScore, eventRank, eventPoints }) => {
               const eventDateStr = new Date(event.date).toLocaleDateString("en-GB", {
                 weekday: "short",
                 day: "numeric",
                 month: "short",
                 year: "numeric",
               });
+              const rankLabel = eventRank === 1 ? "1st" : eventRank === 2 ? "2nd" : eventRank === 3 ? "3rd" : `${eventRank}th`;
               return (
                 <div
                   key={event.id}
@@ -556,7 +557,10 @@ function PlayerRow({
                   </p>
                   <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
                     {eventDateStr} · Event total:{" "}
-                    {games.reduce((s, g) => s + g.score, 0).toLocaleString("en-GB")} pts
+                    {eventTotalScore.toLocaleString("en-GB")} pts
+                    {eventRank > 0 && (
+                      <> · {rankLabel}{eventPoints > 0 && <> · +{eventPoints} pts</>}</>
+                    )}
                   </p>
                   <p className="mb-1.5 text-xs font-medium text-stone-600 dark:text-stone-400">
                     Games

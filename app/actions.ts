@@ -9,6 +9,7 @@ import { loadStore, saveStore, generateId } from "@/lib/store";
 import { isMongoConfigured } from "@/lib/db";
 import { extractScoreFromImage } from "@/lib/extract-score-from-screenshot";
 import type { Round, ScoreEntry, GuessDetail } from "@/lib/store";
+import { EVENT_POINTS } from "@/lib/scoreboard";
 
 export type RoundWithTotals = Round & {
   playerTotals: { playerName: string; totalScore: number }[];
@@ -27,16 +28,23 @@ export type RoundWithSubScores = Round & {
   playerTotals: { playerName: string; totalScore: number; subScores: number[]; subScoreEntries?: SubScoreEntry[] }[];
 };
 
-/** Player's participation in one event: the event + their games (scores) in it. */
+/** Player's participation in one event: the event, their games, and ranking/points. */
 export type PlayerEvent = {
   event: Round;
   games: GameEntry[];
+  /** This player's total score in this event (sum of game scores). */
+  eventTotalScore: number;
+  /** 1-based rank in this event (1 = first, 2 = second, …). */
+  eventRank: number;
+  /** Points earned in this event (3 for 1st, 2 for 2nd, 1 for 3rd, 0 otherwise). */
+  eventPoints: number;
 };
 
-/** Player-centric scoreboard row: total across all events, and per-event breakdown. */
+/** Player-centric scoreboard row: total event points (3/2/1 per event) and per-event breakdown. */
 export type PlayerScoreboardEntry = {
   playerName: string;
-  totalScore: number;
+  /** Sum of event points (3 for 1st, 2 for 2nd, 1 for 3rd in each event). */
+  totalPoints: number;
   events: PlayerEvent[];
 };
 
@@ -110,14 +118,14 @@ export async function getRoundWithSubScores(
   return { ...round, entries, playerTotals };
 }
 
-/** Scoreboard ordered by player: total score across all events, with events → games → guess details. */
+/** Scoreboard ordered by player: total event points (3/2/1 per event), with events → games → guess details. */
 export async function getScoreboardByPlayer(): Promise<PlayerScoreboardEntry[]> {
   const store = await loadStore();
   const roundsById = new Map(store.rounds.map((r) => [r.id, r]));
 
   const byPlayer = new Map<
     string,
-    { totalScore: number; byRound: Map<string, GameEntry[]> }
+    { byRound: Map<string, { games: GameEntry[]; totalScore: number }> }
   >();
 
   for (const e of store.scores) {
@@ -126,34 +134,72 @@ export async function getScoreboardByPlayer(): Promise<PlayerScoreboardEntry[]> 
 
     let player = byPlayer.get(e.playerName);
     if (!player) {
-      player = { totalScore: 0, byRound: new Map() };
+      player = { byRound: new Map() };
       byPlayer.set(e.playerName, player);
     }
-    player.totalScore += e.score;
-
+    const roundData = player.byRound.get(e.roundId) ?? {
+      games: [],
+      totalScore: 0,
+    };
     const guessDetails =
       Array.isArray(e.guessDetails) && e.guessDetails.length > 0
         ? e.guessDetails
         : undefined;
-    const games = player.byRound.get(e.roundId) ?? [];
-    games.push({ score: e.score, guessDetails, entryId: e.id });
-    player.byRound.set(e.roundId, games);
+    roundData.games.push({ score: e.score, guessDetails, entryId: e.id });
+    roundData.totalScore += e.score;
+    player.byRound.set(e.roundId, roundData);
+  }
+
+  const eventPointsMap = new Map<string, Map<string, number>>();
+  for (const round of store.rounds) {
+    const entries = store.scores.filter((s) => s.roundId === round.id);
+    const totals = new Map<string, number>();
+    for (const s of entries) {
+      totals.set(s.playerName, (totals.get(s.playerName) ?? 0) + s.score);
+    }
+    const ranked = Array.from(totals.entries())
+      .map(([playerName, totalScore]) => ({ playerName, totalScore }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+    const pointsForRound = new Map<string, number>();
+    ranked.forEach(({ playerName }, i) => {
+      pointsForRound.set(playerName, EVENT_POINTS[i] ?? 0);
+    });
+    eventPointsMap.set(round.id, pointsForRound);
   }
 
   return Array.from(byPlayer.entries())
-    .map(([playerName, { totalScore, byRound }]) => {
+    .map(([playerName, { byRound }]) => {
+      let totalPoints = 0;
       const events: PlayerEvent[] = Array.from(byRound.entries())
-        .map(([roundId, games]) => {
+        .map(([roundId, { games, totalScore: eventTotalScore }]) => {
           const event = roundsById.get(roundId)!;
-          return { event, games };
+          const pointsForRound = eventPointsMap.get(roundId);
+          const eventPoints = pointsForRound?.get(playerName) ?? 0;
+          totalPoints += eventPoints;
+          const entries = store.scores.filter((s) => s.roundId === roundId);
+          const totals = new Map<string, number>();
+          for (const s of entries) {
+            totals.set(s.playerName, (totals.get(s.playerName) ?? 0) + s.score);
+          }
+          const ranked = Array.from(totals.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map((r) => r[0]);
+          const eventRank = ranked.indexOf(playerName) + 1 || 0;
+          return {
+            event,
+            games,
+            eventTotalScore,
+            eventRank,
+            eventPoints,
+          };
         })
         .sort(
           (a, b) =>
             new Date(b.event.date).getTime() - new Date(a.event.date).getTime()
         );
-      return { playerName, totalScore, events };
+      return { playerName, totalPoints, events };
     })
-    .sort((a, b) => b.totalScore - a.totalScore);
+    .sort((a, b) => b.totalPoints - a.totalPoints);
 }
 
 export async function createRound(formData: FormData): Promise<{ error?: string }> {
