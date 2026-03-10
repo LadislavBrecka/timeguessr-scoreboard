@@ -259,11 +259,23 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 : "No scores yet. An admin must create a round first."}
             </p>
           ) : (
-            <ul className="divide-y divide-stone-200 dark:divide-stone-700">
+            <>
+              <div className="border-b border-stone-200 bg-stone-50/80 px-4 py-2.5 dark:border-stone-700 dark:bg-stone-800/50">
+                <div className="grid grid-cols-[2rem_1fr_5rem_5rem_5rem_2rem] gap-x-4 -mx-2 px-2 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                  <span className="flex items-center justify-center">#</span>
+                  <span className="flex items-center">Player</span>
+                  <span className="flex items-center justify-center">Rounds</span>
+                  <span className="flex items-center justify-center">Max</span>
+                  <span className="flex items-center justify-center">Points</span>
+                  <span aria-hidden />
+                </div>
+              </div>
+              <ul className="divide-y divide-stone-200 dark:divide-stone-700">
               {players.map((player, idx) => (
                 <PlayerRow
                   key={player.playerName}
                   rank={idx + 1}
+                  isOdd={idx % 2 === 1}
                   player={player}
                   isExpanded={expandedPlayerName === player.playerName}
                   expandedGameKey={expandedGameKey}
@@ -278,6 +290,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 />
               ))}
             </ul>
+            </>
           )}
         </div>
       </section>
@@ -472,6 +485,12 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   );
 }
 
+function getMaxGameScore(player: PlayerScoreboardEntry): number {
+  const scores =
+    player.events?.flatMap((ev) => ev.games?.map((g) => g?.score ?? 0) ?? []) ?? [];
+  return scores.length > 0 ? Math.max(...scores) : 0;
+}
+
 function PlayerRow({
   rank,
   player,
@@ -479,6 +498,7 @@ function PlayerRow({
   expandedGameKey,
   onToggleDetails,
   onToggleGame,
+  isOdd,
 }: Readonly<{
   rank: number;
   player: PlayerScoreboardEntry;
@@ -486,28 +506,35 @@ function PlayerRow({
   expandedGameKey: string | null;
   onToggleDetails: () => void;
   onToggleGame: (key: string) => void;
+  isOdd: boolean;
 }>) {
+  const maxGameScore = getMaxGameScore(player);
   return (
-    <li className="bg-white dark:bg-stone-900">
-      <div className="flex items-center gap-3 border-b border-stone-100 px-4 py-3 dark:border-stone-800">
+    <li className={isOdd ? "bg-stone-50/60 dark:bg-stone-800/40" : "bg-white dark:bg-stone-900"}>
+      <div className="border-b border-stone-100 px-4 py-3 dark:border-stone-800">
         <button
           type="button"
           onClick={onToggleDetails}
-          className="flex flex-1 items-center justify-between gap-4 text-left transition hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg -mx-2 px-2 py-1"
+          className="grid w-full grid-cols-[2rem_1fr_5rem_5rem_5rem_2rem] items-center gap-x-4 text-left transition hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg -mx-2 px-2 py-1"
         >
-          <span className="w-6 shrink-0 text-right text-sm text-stone-500 dark:text-stone-400 tabular-nums">
+          <span className="flex justify-center text-sm tabular-nums text-stone-500 dark:text-stone-400">
             {rank}
           </span>
-          <span className="font-semibold text-stone-900 dark:text-stone-100">
+          <span className="min-w-0 truncate font-semibold text-stone-900 dark:text-stone-100">
             {player.playerName}
           </span>
-          <span className="min-w-[4.5rem] text-right text-stone-700 dark:text-stone-300 tabular-nums">
+          <span className="flex justify-center">
+            <span className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600 dark:bg-stone-700 dark:text-stone-300">
+              {player.events.length} {player.events.length === 1 ? "round" : "rounds"}
+            </span>
+          </span>
+          <span className="flex justify-center text-sm tabular-nums text-stone-600 dark:text-stone-400">
+            {maxGameScore > 0 ? maxGameScore.toLocaleString("en-GB") : "—"}
+          </span>
+          <span className="flex justify-center text-sm tabular-nums text-stone-700 dark:text-stone-300">
             {player.totalPoints} pts
           </span>
-          <span
-            className="text-stone-400 dark:text-stone-500"
-            aria-hidden
-          >
+          <span className="flex justify-center text-stone-400 dark:text-stone-500" aria-hidden>
             {isExpanded ? "▼" : "▶"}
           </span>
         </button>
