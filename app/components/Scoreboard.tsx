@@ -28,7 +28,7 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   const [players, setPlayers] = useState<PlayerScoreboardEntry[]>(initialPlayers);
   const [expandedPlayerName, setExpandedPlayerName] = useState<string | null>(null);
   const [expandedGameKey, setExpandedGameKey] = useState<string | null>(null);
-  const [addMode, setAddMode] = useState<"type" | "screenshot">("type");
+  const [addMode, setAddMode] = useState<"type" | "screenshot">("screenshot");
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
   const [addPending, setAddPending] = useState(false);
@@ -307,21 +307,6 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
               <button
                 type="button"
                 onClick={() => {
-                  setAddMode("type");
-                  setAddError(null);
-                  setAddSuccess(null);
-                }}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  addMode === "type"
-                    ? "bg-white text-stone-900 shadow dark:bg-stone-800 dark:text-stone-100"
-                    : "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
-                }`}
-              >
-                Type score
-              </button>
-              <button
-                type="button"
-                onClick={() => {
                   setAddMode("screenshot");
                   setAddError(null);
                   setAddSuccess(null);
@@ -333,6 +318,21 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
                 }`}
               >
                 Upload screenshot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddMode("type");
+                  setAddError(null);
+                  setAddSuccess(null);
+                }}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  addMode === "type"
+                    ? "bg-white text-stone-900 shadow dark:bg-stone-800 dark:text-stone-100"
+                    : "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+                }`}
+              >
+                Type score
               </button>
             </div>
             <div className="flex flex-wrap items-end gap-4">
