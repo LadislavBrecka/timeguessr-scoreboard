@@ -6,8 +6,6 @@ import Link from "next/link";
 import {
   addScore,
   addScoreFromScreenshot,
-  createRound,
-  deleteRound,
   type RoundWithTotals,
   type PlayerScoreboardEntry,
 } from "@/app/actions";
@@ -35,7 +33,6 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
   const [addPending, setAddPending] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
 
   const screenshotRoundRef = useRef<HTMLSelectElement>(null);
   const submitScreenshotRef = useRef<(formData: FormData) => Promise<void>>(
@@ -124,28 +121,6 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
     return () => document.removeEventListener("paste", onPaste);
   }, [addModalOpen, addMode]);
 
-  async function handleDeleteRound(roundId: string) {
-    if (!confirm("Delete this event and all its scores? This cannot be undone.")) return;
-    setCreateError(null);
-    const result = await deleteRound(roundId);
-    if (result.error) {
-      setCreateError(result.error);
-      return;
-    }
-    setExpandedGameKey(null);
-    await refreshData();
-  }
-
-  async function handleCreateRound(formData: FormData) {
-    setCreateError(null);
-    const result = await createRound(formData);
-    if (result.error) {
-      setCreateError(result.error);
-      return;
-    }
-    await refreshData();
-  }
-
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-center justify-end gap-2 border-b border-stone-200 pb-4 dark:border-stone-700">
@@ -155,12 +130,15 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
           <>
             <span className="text-sm text-stone-600 dark:text-stone-300">
               Logged in as <strong>{session.user.name}</strong>
-              {isAdmin && (
-                <span className="ml-1.5 rounded bg-stone-200 px-1.5 py-0.5 text-xs font-medium text-stone-700 dark:bg-stone-600 dark:text-stone-200">
-                  Admin
-                </span>
-              )}
             </span>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-stone-900 transition hover:bg-amber-400 dark:bg-stone-600 dark:text-stone-100 dark:hover:bg-stone-500"
+              >
+                Manage events
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: "/" })}
@@ -210,6 +188,14 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
             >
               + Add score
             </button>
+          ) : session?.user ? (
+            <p className="text-sm text-stone-500 dark:text-stone-400">
+              You&apos;re logged in as admin.{" "}
+              <Link href="/login" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">
+                Log in as a player
+              </Link>
+              {" to add your own scores."}
+            </p>
           ) : (
             <p className="text-sm text-stone-500 dark:text-stone-400">
               <Link href="/login" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">
@@ -408,96 +394,15 @@ export function Scoreboard({ initialRounds, initialPlayers, isAdmin }: Readonly<
             )}
             {rounds.length === 0 && (
               <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                {isAdmin ? "Create a round below first." : "An admin must create a round first."}
+                {isAdmin ? (
+                  <>No events yet. <Link href="/admin" className="font-medium text-amber-600 underline hover:text-amber-700 dark:text-amber-400">Create one in Admin</Link> first.</>
+                ) : (
+                  "An admin must create an event first."
+                )}
               </p>
             )}
           </div>
         </div>
-      )}
-
-      {isAdmin && (
-        <>
-          <section className="rounded-2xl border border-stone-300 bg-stone-50/80 p-6 shadow-sm dark:border-stone-600 dark:bg-stone-900/50">
-            <h2 className="mb-4 text-lg font-semibold text-stone-800 dark:text-stone-200">
-              Events
-            </h2>
-            {rounds.length === 0 ? (
-              <p className="text-sm text-stone-500 dark:text-stone-400">
-                No events yet. Create one below.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {rounds.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white py-2 pl-3 pr-2 dark:border-stone-600 dark:bg-stone-800"
-                  >
-                    <span className="text-sm font-medium text-stone-800 dark:text-stone-200">
-                      {r.name}
-                    </span>
-                    <span className="text-xs text-stone-500 dark:text-stone-400">
-                      {new Date(r.date).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRound(r.id)}
-                      className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          <section className="rounded-2xl border border-stone-300 bg-stone-50/80 p-6 shadow-sm dark:border-stone-600 dark:bg-stone-900/50">
-            <h2 className="mb-4 text-lg font-semibold text-stone-800 dark:text-stone-200">
-              New social event
-            </h2>
-            <form
-            action={handleCreateRound}
-            className="flex flex-wrap items-end gap-4"
-          >
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-stone-600 dark:text-stone-400">
-                Event name
-              </span>
-              <input
-                type="text"
-                name="name"
-                placeholder="e.g. March Social"
-                className="min-w-[160px] rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-stone-600 dark:text-stone-400">
-                Date
-              </span>
-              <input
-                type="date"
-                name="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
-                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
-              />
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg bg-stone-700 px-4 py-2 font-medium text-white transition hover:bg-stone-600 dark:bg-stone-600 dark:hover:bg-stone-500"
-            >
-              Create round
-            </button>
-          </form>
-          {createError && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-              {createError}
-            </p>
-          )}
-        </section>
-        </>
       )}
     </div>
   );
