@@ -467,13 +467,13 @@ function PlayerRow({
           onClick={onToggleDetails}
           className="flex flex-1 items-center justify-between gap-4 text-left transition hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg -mx-2 px-2 py-1"
         >
-          <span className="w-6 text-sm text-stone-500 dark:text-stone-400">
+          <span className="w-6 shrink-0 text-right text-sm text-stone-500 dark:text-stone-400 tabular-nums">
             {rank}
           </span>
           <span className="font-semibold text-stone-900 dark:text-stone-100">
             {player.playerName}
           </span>
-          <span className="text-stone-700 dark:text-stone-300 tabular-nums">
+          <span className="min-w-[4.5rem] text-right text-stone-700 dark:text-stone-300 tabular-nums">
             {player.totalPoints} pts
           </span>
           <span
